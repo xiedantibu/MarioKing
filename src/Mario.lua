@@ -39,6 +39,12 @@ function Mario:ctor()
     self:initBodySprites()
 end
 
+function Mario.create()
+    local node=Mario.new()
+    node:addChild(node.mainBody) 
+    return node
+end
+
 function Mario:initBodySprites()
 	self.normalJumpLeft=cc.Sprite:create(pic_mario_normal_left,cc.rect(18*10,0,18,32))
 	self.normalLeft=cc.Sprite:create(pic_mario_normal_left,cc.rect(0,0,18,32))
@@ -51,8 +57,10 @@ function Mario:initBodySprites()
     self.smallLeft:retain()
     self.smallJumpRight=cc.SpriteFrame:create(pic_mario_small_right,cc.rect(14*10,0,14,16))
     self.smallJumpRight:retain()
-    self.smallRight=cc.SpriteFrame:create(pic_mario_small_right,cc.rect(0,0,14,16))
+    self.smallRight=cc.SpriteFrame:create(pic_mario_small_right,cc.rect(14*8,0,14,16))
     self.smallRight:retain()
+    self.smallDie=cc.SpriteFrame:create(pic_mario_small_die,cc.rect(16,0,16,18))
+    self.smallDie:retain()
     --init mainBody
     self:setContentSize(self.smallSize)
     self.mainBody=cc.Sprite:createWithSpriteFrame(self.smallRight)
@@ -72,7 +80,7 @@ function Mario:setMarioState(_state)
         self.mainBody:setSpriteFrame(self.smallRight)
     elseif MarioState.NORMAL_LEFT==state then
         self.face=MarioState.LEFT
-        self.mainBody:setSpriteFrame(self.smallRight)
+        self.mainBody:setSpriteFrame(self.smallLeft)
     elseif MarioState.RIGHT==_state then
         if not self.isFlying then
             self.mainBody:runAction(cc.RepeatForever:create(cc.Animate:create(self:marioAnimSmallRight())))
@@ -93,12 +101,23 @@ function Mario:setMarioState(_state)
     end
 end
 
-function Mario.create()
-    local node=Mario.new()
-    node:addChild(node.mainBody) 
-    return node
-end
 
+function Mario:dieForTrap()
+	self.mainBody:stopAllActions()
+	self.mainBody:setSpriteFrame(self.smallDie)
+	self.mainBody:runAction(cc.Animate:create(self:marioAnimSmallDie()))
+	
+	local moveUp=cc.MoveBy:create(0.6,cc.p(0,32))
+	local moveDown=cc.MoveBy:create(0.6,cc.p(0,-32))
+	local delay=cc.DelayTime:create(0.2)
+	
+	local function reSetNonVisible()
+		self.mainBody:stopAllActions()
+		self:setVisible(false)
+	end
+	
+    self:runAction(cc.Sequence:create(moveUp,delay,moveDown,cc.CallFunc:create(reSetNonVisible)))
+end
 
 function Mario:marioAnimSmallLeft()
     local frames={}
@@ -117,6 +136,16 @@ function Mario:marioAnimSmallRight()
         frames[#frames+1]=frame
     end 
     local animation=cc.Animation:createWithSpriteFrames(frames,0.03)   
+    return animation
+end
+
+function Mario:marioAnimSmallDie()
+    local frames={}
+    for i=0,7 do
+        local frame=cc.SpriteFrame:create(pic_mario_small_die,cc.rect(16*i,0,16,18))
+        frames[#frames+1]=frame
+    end 
+    local animation=cc.Animation:createWithSpriteFrames(frames,0.1)   
     return animation
 end
 

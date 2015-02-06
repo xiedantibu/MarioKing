@@ -38,7 +38,7 @@ local function main()
     --set FPS. the default value is 1.0/60 if you don't call this
     director:setAnimationInterval(1.0 / 60)
     
-    cc.Director:getInstance():getOpenGLView():setDesignResolutionSize(480, 320, 1)
+    cc.Director:getInstance():getOpenGLView():setDesignResolutionSize(480, 320, 3)
     
     --create scene 
     local scene = require("MainMenu")

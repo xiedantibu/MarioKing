@@ -4,16 +4,17 @@ end)
 GameScene.winSize=cc.Director:getInstance():getWinSize()
 GameScene.scheduleID=nil
 
+--Map相关字段
 GameScene.mainLayer=nil
 GameScene.mainMap=nil
 GameScene.mapSize=nil
 GameScene.mapMaxH=0.0
-GameScene.beginPos=nil
+GameScene.beginPos=cc.p(0,0)
 
-GameScene.playerSZ=nil
-GameScene.player=nil
+--Mario相关字段
+GameScene.marioSize=nil
+GameScene.mario=nil
 GameScene.curPos=nil
-GameScene.playerAnchor=cc.p(GameScene.winSize.width/2-80,GameScene.winSize.height/2)
 GameScene.isSky=false
 
 GameScene.moveDelta=0
@@ -21,22 +22,13 @@ GameScene.moveOffset=0
 GameScene.jumpOffset=0
 GameScene.ccMoveDelta=0.05
 GameScene.ccMoveOffset=2.0
-GameScene.ccJumpOffset=0.3
+GameScene.ccJumpOffset=0.4
 
+--控制相关字段
 GameScene.leftKeyDown=false
 GameScene.rightKeyDown=false
 GameScene.jumpKeyDown=false
 GameScene.fireKeyDown=false
-
-GameScene.beginPos=cc.p(0,96)
-GameScene.backKeyPos=cc.p(84,48)
-GameScene.leftKeyPos=cc.p(40,48)
-GameScene.rightKeyPos=cc.p(128,48)
-GameScene.jumpKeyPos=cc.p(432,35)
-GameScene.fireKeyPos=cc.p(353,35)
-GameScene.MSetKeyPos=cc.p(260,30)
-
-
 
 
 function GameScene:ctor()
@@ -47,22 +39,22 @@ end
 
 function GameScene.create()
     local scene = GameScene.new()
-    scene:addChild(scene:createLayerFarm())
+    scene:initLayer()
+    scene:addChild(scene.mainLayer)
     return scene
 end
 
-function GameScene:createLayerFarm()
-    local layer=cc.Layer:create()
+--初始化layer
+function GameScene:initLayer()
+    self.mainLayer=cc.Layer:create()
 
+    --初始化Map和Mario
     self:initMap()
     self.mainLayer:addChild(self.mainMap)
     self:initMario()
-    self.mainLayer:addChild(self.player)
+    self.mainLayer:addChild(self.mario)
 
     self.mainLayer:setPosition(self.beginPos)
-    layer:addChild(self.mainLayer)
-
-    self:createControlLayer(layer)
 
     --register touches listener
     local touchListener=cc.EventListenerTouchAllAtOnce:create()
@@ -83,74 +75,28 @@ function GameScene:createLayerFarm()
     keyListener:registerScriptHandler(onKeyPressed,cc.Handler.EVENT_KEYBOARD_PRESSED)
     keyListener:registerScriptHandler(onKeyReleased,cc.Handler.EVENT_KEYBOARD_RELEASED)
 
-    local eventDispatch=layer:getEventDispatcher()
-    eventDispatch:addEventListenerWithSceneGraphPriority(touchListener,layer)
-    eventDispatch:addEventListenerWithSceneGraphPriority(keyListener,layer)
+    local eventDispatch=self.mainLayer:getEventDispatcher()
+    eventDispatch:addEventListenerWithSceneGraphPriority(touchListener,self.mainLayer)
+    eventDispatch:addEventListenerWithSceneGraphPriority(keyListener,self.mainLayer)
 
     local function tick(dt)
         self:update(dt)
     end
 
-    self.scheduleID=cc.Director:getInstance():getScheduler():scheduleScriptFunc(tick,0,false)
+    self.schedulerID=cc.Director:getInstance():getScheduler():scheduleScriptFunc(tick,0,false)
 
-    return layer
+    cclog("%s,",type(self.schedulerID))
+    local function onNodeEvent(event)
+        if "exit" == event then
+            cclog("GameScene exit")
+            cclog("schedulerID:%s,%d",type(self.schedulerID),self.schedulerID)
+            cc.Director:getInstance():getScheduler():unscheduleScriptEntry(self.schedulerID)
+        end
+    end
+    self.mainLayer:registerScriptHandler(onNodeEvent)
 end
 
-function GameScene:createControlLayer(layer)
-
-    local winSZ=cc.Director:getInstance():getWinSize()
-    local controlBg=cc.Sprite:create(pic_control_bg)
-    controlBg:setAnchorPoint(0,0)
-    layer:addChild(controlBg)
-
-    --direction key
-    local backRect=cc.rect(0,0,72,72)
-    self.backKeyNormal=cc.SpriteFrame:create(pic_backKey,backRect)
-    self.backKeyNormal:retain()
-    self.backKeyRight=cc.SpriteFrame:create(pic_backKey_right,backRect)
-    self.backKeyRight:retain()
-    self.backKeyLeft=cc.SpriteFrame:create(pic_backKey_left,backRect)
-    self.backKeyLeft:retain()
-
-
-    self.backKeyImage=cc.Sprite:createWithSpriteFrame(self.backKeyNormal)
-    self.backKeyImage:setPosition(self.backKeyPos)
-    layer:addChild(self.backKeyImage)
-
-    --AB key,A:fire,B:jump
-    local abRect=cc.rect(0,0,72,50)
-    self.abNormal=cc.SpriteFrame:create(pic_ab_normal,abRect)
-    self.abNormal:retain()
-    self.abSelect=cc.SpriteFrame:create(pic_ab_select,abRect)
-    self.abSelect:retain()
-
-    self.jumpImage=cc.Sprite:createWithSpriteFrame(self.abNormal)
-    self.jumpImage:setPosition(self.jumpKeyPos)
-    layer:addChild(self.jumpImage)
-
-    self.fireImage=cc.Sprite:createWithSpriteFrame(self.abNormal)
-    self.fireImage:setPosition(self.fireKeyPos)
-    layer:addChild(self.fireImage)
-
-    self.leftKeyMI=cc.MenuItemImage:create(pic_leftright,pic_leftright)
-    self.rightKeyMI=cc.MenuItemImage:create(pic_leftright,pic_leftright)
-    self.jumpMI=cc.MenuItemImage:create(pic_ab_normal,pic_ab_select)
-
-    self.leftKeyMI:setPosition(self.leftKeyPos)
-    self.rightKeyMI:setPosition(self.rightKeyPos)
-    self.jumpMI:setPosition(self.jumpKeyPos)
-
-
-    self.MSetMI=cc.MenuItemImage:create(pic_M_n,pic_M_s)
-    self.MSetMI:setPosition(self.MSetKeyPos)
-
-    self.backMenuMI=cc.MenuItemImage:create(pic_back_to_menu,pic_back_to_menu)
-    self.backMenuMI:setVisible(false)
-    self.backMenuMI:setEnabled(false)
-    self.backMenuMI:setPosition(winSZ.width/2,winSZ.height/2+20)
-
-end
-
+--初始化地图
 function GameScene:initMap()
     local gameMap=require("GameMap")
     self.mainMap=gameMap.create(tmx_map_1)
@@ -159,14 +105,17 @@ function GameScene:initMap()
     cclog("map size:%d,%d",self.mapSize.width,self.mapSize.height)
 end
 
+--初始化mario
 function GameScene:initMario()
     local mario=require("Mario")
-    self.player=mario.create()
-    self.player:setAnchorPoint(0.5,0)
-    self.player:setPosition(self.mainMap.birthPos)
+    self.mario=mario.create()
+    self.mario:setAnchorPoint(0.5,0)
+    self.mario:setPosition(self.mainMap:tileCoordToPoint(cc.p(3,14)))
+    self.marioSize=self.mario:getContentSize()
     cclog("Play Init End")
 end
 
+--播放音乐音效
 function GameScene:playBgMusic()
     local bgMusicPath = cc.FileUtils:getInstance():fullPathForFilename("OnLand.wma")
     cc.SimpleAudioEngine:getInstance():playMusic(bgMusicPath,true)
@@ -208,91 +157,187 @@ function GameScene:onKeyReleased(keyCode,event)
     keyCode=keyCode-3
     if cc.KeyCode.KEY_A==keyCode then
         self.leftKeyDown=false
-        self.backKeyImage:setSpriteFrame(self.backKeyNormal)
+        self.isLeftKeyDown=false
         self.moveOffset=0
         self.moveDelta=0
-        self.player:setMarioState(MarioState.NORMAL_LEFT)
+        self.mario:setMarioState(MarioState.NORMAL_LEFT)
     elseif cc.KeyCode.KEY_D==keyCode then
         self.rightKeyDown=false
-        self.backKeyImage:setSpriteFrame(self.backKeyNormal)
+        self.isRightKeyDown=false
         self.moveOffset=0
         self.moveDelta=0
-        self.player:setMarioState(MarioState.NORMAL_RIGHT)
+        self.mario:setMarioState(MarioState.NORMAL_RIGHT)
     elseif cc.KeyCode.KEY_J==keyCode then
         self.fireKeyDown=false
     elseif cc.KeyCode.KEY_K==keyCode then
         self.jumpKeyDown=false
-        self.jumpImage:setSpriteFrame(self.abNormal)
     else
     end
 end
 
 function GameScene:updateControl()
-    if not self.player.isDead then
+    if not self.mario.isDead then
         if self.leftKeyDown then
+            self.isLeftKeyDown=true
             self.moveOffset=-self.ccMoveOffset
             self.moveDelta=-self.ccMoveDelta
-            self.player:setMarioState(MarioState.LEFT)
-            self.backKeyImage:setSpriteFrame(self.backKeyLeft)
+            self.mario:setMarioState(MarioState.LEFT)
         elseif self.rightKeyDown then
+            self.isRightKeyDown=true
             self.moveOffset=self.ccMoveOffset
             self.moveDelta=self.moveDelta
-            self.player:setMarioState(MarioState.RIGHT)
-            self.backKeyImage:setSpriteFrame(self.backKeyRight)
+            self.mario:setMarioState(MarioState.RIGHT)
         else
         end
         if self.jumpKeyDown then
             if not self.isSky then
-                self.jumpOffset=0
+                self.jumpOffset=6
                 self.isSky=true
-                self.player.isFlying=true
+                self.mario.isFlying=true
             end
-            self.jumpImage:setSpriteFrame(self.abSelect)
         end
         if self.fireKeyDown then
         end
     end
 end
 
+--移动Layer显示区域
 function GameScene:setSceneScrollPosition()
-    local playerPos=cc.p(self.player:getPositionX(),self.player:getPositionY())
-    local x=math.max(playerPos.x,self.playerAnchor.x)
-    local y=math.max(playerPos.y,self.playerAnchor.y)
-    x=math.min(x,self.mapSize.width-self.playerAnchor.x)
-    y=math.min(y,self.mapSize.height-self.playerAnchor.y)
-    local actualPos=cc.p(x,y)
-    local viewPos=cc.pSub(self.playerAnchor,actualPos)
-    local avPosX=math.abs(viewPos.x)
-    if avPosX<=self.mapMaxH then
-        return
-    else
-        --cclog("view Pos:%d,%d",avPosX,self.mapMaxH)
-        self.mainLayer:setPosition(viewPos)
-        self.mapMaxH=avPosX
+    --暂时考虑水平移动
+    local marioPosX=self.mario:getPositionX()
+    local anchorX=6*16
+    local x=math.max(anchorX,marioPosX)
+    x=anchorX-x
+    if self.mapSize.width+x <= self.winSize.width then
+        x=self.winSize.width-self.mapSize.width
     end
+    self.mainLayer:setPosition(x,0)
 end
 
 function GameScene:collisionV()
-	self.jumpOffset=self.jumpOffset-self.ccJumpOffset
+    local marioPos=self.curPos
+    --cclog("MarioPos:%d,%d",marioPos.x,marioPos.y)
+    --cclog("MarioSize:%d,%d",self.marioSize.width,self.marioSize.height)
+    if marioPos.y<=0 then
+        cclog("Mario Died")
+        self.mario.isDead=true
+        local pos=cc.p(marioPos.x,1)
+        self.mario:dieForTrap()
+        return
+    end
+    local topY=self.mapSize.height-self.marioSize.height-2
+    if marioPos.y>=topY then
+        cclog("Mario in the Top")
+        self.jumpOffset=0
+        self.isSky=false
+        local pos=cc.p(marioPos.x,topY)
+        self.curPos=pos
+        self.mario:setPosition(pos)
+        return
+    end
+    for marioIdx=6,self.marioSize.width-7 do
+        local upCollisionPos=cc.p(marioPos.x-self.marioSize.width/2+marioIdx,marioPos.y+self.marioSize.height)
+        local upTileCoord=self.mainMap:pointToTileCoord(upCollisionPos)
+        --cclog("upCollisionPos:%d,%d",upCollisionPos.x,upCollisionPos.y)
+        --cclog("upTileCoord:%d,%d",upTileCoord.x,upTileCoord.y)
+        local upPos=self.mainMap:tileCoordToPoint(upTileCoord)
+        upPos=cc.p(marioPos.x,upPos.y-self.marioSize.height)
+        --cclog("upPos:%d,%d",upPos.x,upPos.y)
+        local tileType=self.mainMap:tileTypeAtCoord(upTileCoord)
+        --cclog("up tileType:%d",tileType)
+        local flagUp=false
+        if TileType.BRICK==tileType or TileType.LAND==tileType then
+            if self.jumpOffset>0 then
+                self.jumpOffset=0
+                self.curPos=upPos
+                self.mario:setPosition(upPos)
+                flagUp=true
+            end
+        elseif TileType.COIN==tileType then
+        else
+        end--end if TileType
+        if flagUp then
+            self.jumpOffset=self.jumpOffset-self.ccJumpOffset
+            return
+        end
+    end--end for
+    for marioIdx=4,self.marioSize.width-5 do
+        local downCollisionPos=cc.p(marioPos.x-self.marioSize.width/2+marioIdx,marioPos.y)
+        local downTileCoord=self.mainMap:pointToTileCoord(downCollisionPos)
+        downTileCoord.y=downTileCoord.y+1
+        --cclog("downCollisionPos:%d,%d",downCollisionPos.x,downCollisionPos.y)
+        local downPos=self.mainMap:tileCoordToPoint(downTileCoord)
+        downPos=cc.p(marioPos.x,downPos.y+self.mainMap.tileSize.height)
+        cclog("downPos:%d,%d",downPos.x,downPos.y)
+        cclog("downTileCoord:%f,%f",downTileCoord.x,downTileCoord.y)
+        local tileType=self.mainMap:tileTypeAtCoord(downTileCoord)
+        cclog("down tileType:%d",tileType)
+        local flagDown=false--判断是否落地
+        if TileType.BRICK==tileType or TileType.LAND==tileType or TileType.PIPE==tileType then
+            if self.jumpOffset<0 then
+                self.jumpOffset=0
+                self.curPos=downPos
+                self.mario:setPosition(downPos)
+                self.isSky=false
+                self.mario.isFlying=false
+                local fc=self.mario.face
+                if MarioState.LEFT==fc then
+                    if self.isLeftKeyDown then
+                        self.mario:setMarioState(MarioState.LEFT)
+                    else
+                        self.mario:setMarioState(MarioState.NORMAL_LEFT)
+                    end
+                elseif MarioState.RIGHT==fc then
+                    if self.isRightKeyDown then
+                        self.mario:setMarioState(MarioState.RIGHT)
+                    else
+                        self.mario:setMarioState(MarioState.NORMAL_RIGHT)
+                    end
+                else
+                end--end if MarioState             
+            end--end if self.jumpOffset
+            flagDown=true
+        elseif TileType.FLAGPOLE==tileType then
+        elseif TileType.COIN==tileType then
+        else
+        end
+        if flagDown then
+            return
+        end
+    end--end for
+    self.jumpOffset=self.jumpOffset-self.ccJumpOffset
+end
+
+function GameScene:collisionH()
+    local halfSZ=self.marioSize.width/2
+    local marioPos=self.curPos
+    if marioPos.x<=halfSZ then
+        marioPos.x=halfSZ
+    end
+    if marioPos.x>=self.mapSize.width-halfSZ then
+        marioPos.x=self.mapSize.width-halfSZ
+    end
+    self.curPos=marioPos
+    self.mario:setPosition(marioPos)
 end
 
 function GameScene:update(delta)
     self:updateControl()
-    self.curPos=cc.p(self.player:getPositionX(),self.player:getPositionY())
+    self.curPos=cc.p(self.mario:getPositionX(),self.mario:getPositionY())
     local offset=cc.p(self.moveOffset,self.jumpOffset)
     self.curPos=cc.pAdd(self.curPos,offset)
-    --cclog("curPos:%d,%d",self.curPos.x,self.curPos.y)
     if self.isSky then
-        local fc=self.player.face
-        if MarioState.LEFT==fc then
-            self.player:setMarioState(MarioState.JUMP_LEFT)
-        elseif MarioState.RIGHT==fc then
-            self.player:setMarioState(MarioState.JUMP_RIGHT)
+        local fc=self.mario.face
+        if fc==MarioState.LEFT then
+            self.mario:setMarioState(MarioState.JUMP_LEFT)
+        elseif fc==MarioState.RIGHT then
+            self.mario:setMarioState(MarioState.JUMP_RIGHT)
         else
         end
     end
-    self.player:setPosition(self.curPos)
+    self.mario:setPosition(self.curPos)
     self:setSceneScrollPosition()
+    self:collisionH()
     self:collisionV()
 end
 

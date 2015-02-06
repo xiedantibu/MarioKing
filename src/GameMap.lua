@@ -2,19 +2,7 @@ local GameMap=class("GameMap",function (tmxFile)
     return cc.TMXTiledMap:create(tmxFile)
 end)
 
-GameMap.tileSize=nil
-GameMap.mapSize=nil
-GameMap.cloudLayer=nil
-GameMap.blockLayer=nil
-GameMap.pipeLayer=nil
-GameMap.landLayer=nil
-GameMap.trapLayer=nil
-GameMap.objectLayer=nil
-GameMap.coinLayer=nil
-GameMap.flagpoleLayer=nil
 GameMap.enemyList={}
-GameMap.birthPos=nil
-
 
 function GameMap.create(tmxFile)
     local gameMap=GameMap.new(tmxFile)
@@ -25,20 +13,15 @@ end
 function GameMap:extraInit()
     self.tileSize=self:getTileSize()
     self.mapSize=self:getMapSize()
-    cclog("tile:%d,%d,map:%d,%d",self.tileSize.width,self.tileSize.height,self.mapSize.width,self.mapSize.height)
-
-    --just for easy coding -.-||
+    
     --map=cc.TMXTiledMap:new()
-    self.cloudLayer=self:getLayer("cloud")
-    self.blockLayer=self:getLayer("block")
-    self.pipeLayer=self:getLayer("pipe")
+    self.brickkLayer=self:getLayer("brick")
+    --self.pipeLayer=self:getLayer("pipe")
     self.landLayer=self:getLayer("land")
     self.trapLayer=self:getLayer("trap")
     self.objectLayer=self:getObjectGroup("objects")
-    self.coinLayer=self:getLayer("coin")
-    self.flagpoleLayer=self:getLayer("flagpole")
-    cclog("%s,%s,%s,%s",type(self.cloudLayer),type(self.blockLayer),type(self.pipeLayer),type(self.landLayer))
-    cclog("%s,%s,%s,%s",type(self.trapLayer),type(self.objectLayer),type(self.coinLayer),type(self.flagpoleLayer))
+    --self.coinLayer=self:getLayer("coin")
+    --self.flagpoleLayer=self:getLayer("flagpole")
     self:initObjects()
 
 end
@@ -73,9 +56,40 @@ function GameMap:initObjects()
     self:launchEnemyInMap()
 end
 
+function GameMap:tileTypeAtCoord(tileCoord)
+    local id= self.brickkLayer:getTileGIDAt(tileCoord)
+    if id>0 then
+        return TileType.BRICK
+    end 
+    id=self.landLayer:getTileGIDAt(tileCoord)
+    if id>0 then
+        return TileType.LAND
+    end
+    id= self.trapLayer:getTileGIDAt(tileCoord)
+    if id>0 then
+        return TileType.TRAP
+    end 
+--  id=self.pipeLayer:getTileGIDAt(tileCoord)
+--  if id>0 then
+--     return TileType.PIPE
+--  end
+--    id=self.coinLayer :getTileGIDAt(tileCoord)
+--    if id>0 then
+--        return TileType.COIN
+--    end
+--    id=self.flagpoleLayer:getTileGIDAt(tileCoord)
+--    if id>0 then
+--        return TileType.FLAGPOLE
+--    end
+    return TileType.NONEH
+end
+
 function GameMap:pointToTileCoord(pos)
 	local x=pos.x/self.tileSize.width
 	local y=self.mapSize.height-1-pos.y/self.tileSize.height
+	--[a? b:c] is [a and b or c]
+	x=x-math.floor(x)>=0.5 and math.ceil(x) or math.floor(x)
+    y=y-math.floor(y)>=0.5  and math.ceil(y) or math.floor(y)
 	local p=cc.p(x,y)
 	return p
 end

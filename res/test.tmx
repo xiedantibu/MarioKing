@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.0" orientation="orthogonal" renderorder="right-down" width="50" height="20" tilewidth="16" tileheight="16">
+ <tileset firstgid="1" name="superMarioMap" tilewidth="16" tileheight="16" spacing="1" margin="1">
+  <image source="superMarioMap.png" width="511" height="511"/>
+ </tileset>
+ <layer name="background" width="50" height="20">
+  <data encoding="base64" compression="zlib">
+   eJzt0EsOgjAUQFEY4BZ0jF8WwNzf+lyAIgqrAP8LURfiyEviwAGl0ARi5N3kJE3oa0ktS2qiNTYIsEWIHfaIEBvubboEKQ444oQzLrjiZri3bL/8NlWq420kqY2tbD1Jakuvms510ccAQ4wwxgRewVzXzl/r6hnO6ZpihjkWWML56Chmvr9n/BL/4yio7iiay2bueOCpv1qSpD/oDZb6MI0=
+  </data>
+ </layer>
+ <layer name="land" width="50" height="20">
+  <data encoding="base64" compression="zlib">
+   eJztz7EJAEAIA0D3dP89XOAftBAs7iBdUiQCAAC4LhvZ7r+2050ffvjxTwG5r0qn
+  </data>
+ </layer>
+ <layer name="trap" width="50" height="20">
+  <data encoding="base64" compression="zlib">
+   eJzt0gEJACAQA8C3fxWTfKrPoAjCuEuwsVUBAACc2+t3gjc6pEfKHik9bn41WbkDng==
+  </data>
+ </layer>
+ <layer name="brick" width="50" height="20">
+  <data encoding="base64" compression="zlib">
+   eJztzjEKADAIBEH/mf//w14sgpJUM3DlwkUAAPDKKZs0t13Xb78A8E8ClpMFsQ==
+  </data>
+ </layer>
+ <objectgroup name="objects">
+  <object name="others" type="BirthPoint" x="48" y="224"/>
+  <object name="enemy" type="mushroom" x="256" y="224"/>
+ </objectgroup>
+</map>

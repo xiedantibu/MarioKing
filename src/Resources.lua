@@ -32,9 +32,11 @@ pic_mario_normal_right="walkRight.png"
 pic_mario_small_left="smallWalkLeft.png"
 pic_mario_small_right="smallWalkRight.png"
 
+pic_mario_small_die="small_die.png"
+
 --TileMap Resources
 pic_mushroom="Mushroom0.png"
 
 pic_tmx_map="superMarioMap.png"
 
-tmx_map_1="MarioMap1.tmx"
+tmx_map_1="test.tmx"
