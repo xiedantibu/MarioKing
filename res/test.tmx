@@ -20,11 +20,12 @@
  </layer>
  <layer name="brick" width="50" height="20">
   <data encoding="base64" compression="zlib">
-   eJztzjEKADAIBEH/mf//w14sgpJUM3DlwkUAAPDKKZs0t13Xb78A8E8ClpMFsQ==
+   eJztzEEKACAIBEDpl9H//1EQHr1E3mZgERY1AgCAbutkjjt/7lb3map//Q1Anw0jaQSg
   </data>
  </layer>
  <objectgroup name="objects">
   <object name="others" type="BirthPoint" x="48" y="224"/>
   <object name="enemy" type="mushroom" x="256" y="224"/>
+  <object name="mushroom" type="MushroomReward" x="272" y="192"/>
  </objectgroup>
 </map>

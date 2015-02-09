@@ -30,11 +30,17 @@ GameScene.rightKeyDown=false
 GameScene.jumpKeyDown=false
 GameScene.fireKeyDown=false
 
+--UI
+GameScene.gameOver=nil
+GameScene.passFailure=nil
+GameScene.passSucess=nil
+GameScene.retry=nil
+
 
 function GameScene:ctor()
     self.mainLayer=cc.Layer:create()
     --play bg music
-    --self:playBgMusic()
+    self:playBgMusic()
 end
 
 function GameScene.create()
@@ -50,9 +56,10 @@ function GameScene:initLayer()
 
     --初始化Map和Mario
     self:initMap()
-    self.mainLayer:addChild(self.mainMap)
     self:initMario()
-    self.mainLayer:addChild(self.mario)
+    
+    self:initUI()
+
 
     self.mainLayer:setPosition(self.beginPos)
 
@@ -81,15 +88,13 @@ function GameScene:initLayer()
 
     local function tick(dt)
         self:update(dt)
-    end
+    end  
 
     self.schedulerID=cc.Director:getInstance():getScheduler():scheduleScriptFunc(tick,0,false)
 
-    cclog("%s,",type(self.schedulerID))
     local function onNodeEvent(event)
         if "exit" == event then
             cclog("GameScene exit")
-            cclog("schedulerID:%s,%d",type(self.schedulerID),self.schedulerID)
             cc.Director:getInstance():getScheduler():unscheduleScriptEntry(self.schedulerID)
         end
     end
@@ -103,6 +108,7 @@ function GameScene:initMap()
     self.mainMap:setPosition(cc.p(0,0))
     self.mapSize=cc.size(self.mainMap.tileSize.width*self.mainMap.mapSize.width,self.mainMap.tileSize.height*self.mainMap.mapSize.height)
     cclog("map size:%d,%d",self.mapSize.width,self.mapSize.height)
+    self.mainLayer:addChild(self.mainMap)
 end
 
 --初始化mario
@@ -110,14 +116,51 @@ function GameScene:initMario()
     local mario=require("Mario")
     self.mario=mario.create()
     self.mario:setAnchorPoint(0.5,0)
-    self.mario:setPosition(self.mainMap:tileCoordToPoint(cc.p(3,14)))
+    self.mario:setPosition(self.mainMap.birthPos)
     self.marioSize=self.mario:getContentSize()
     cclog("Play Init End")
+    self.mainLayer:addChild(self.mario)
+end
+
+function GameScene:initUI()
+    local centerP=cc.p(self.winSize.width/2,self.winSize.height/2)
+    
+	self.gameOver=cc.Sprite:create(pic_gameover)
+	self.gameOver:setPosition(centerP.x,centerP.y+50)
+	self.gameOver:setVisible(false)
+	self:addChild(self.gameOver)
+	
+	self.passFailure=cc.Sprite:create(pic_pass_failure)
+	self.passFailure:setPosition(centerP.x,centerP.y+50)
+    self.passFailure:setVisible(false)
+	self:addChild(self.passFailure)
+	
+    self.passSucess=cc.Sprite:create(pic_pass_sucess)
+    self.passSucess:setPosition(centerP.x,centerP.y+50)
+    self.passSucess:setVisible(false)
+    self:addChild(self.passSucess)
+	
+	local function onRetry(sender,event)
+		local scene=require("GameScene")
+		local gameScene=scene.create()
+        cc.Director:getInstance():replaceScene(gameScene)
+	end
+	self.retry=cc.MenuItemImage:create(pic_retry_normal,pic_retry_select)
+	self.retry:setPosition(centerP)
+	self.retry:setVisible(false)
+	self.retry:setEnabled(false)
+	self.retry:registerScriptTapHandler(onRetry)
+	
+	self.menu=cc.Menu:create(self.retry)
+	self.menu:setAnchorPoint(0,0)
+	self.menu:setPosition(0,0)
+	
+	self:addChild(self.menu,100)
 end
 
 --播放音乐音效
 function GameScene:playBgMusic()
-    local bgMusicPath = cc.FileUtils:getInstance():fullPathForFilename("OnLand.wma")
+    local bgMusicPath = cc.FileUtils:getInstance():fullPathForFilename(music_bg_music)
     cc.SimpleAudioEngine:getInstance():playMusic(bgMusicPath,true)
 end
 
@@ -195,6 +238,7 @@ function GameScene:updateControl()
                 self.isSky=true
                 self.mario.isFlying=true
             end
+            cc.SimpleAudioEngine:getInstance():playEffect(music_jump)
         end
         if self.fireKeyDown then
         end
@@ -219,15 +263,17 @@ function GameScene:collisionV()
     --cclog("MarioPos:%d,%d",marioPos.x,marioPos.y)
     --cclog("MarioSize:%d,%d",self.marioSize.width,self.marioSize.height)
     if marioPos.y<=0 then
-        cclog("Mario Died")
+        --cclog("Mario Died")
         self.mario.isDead=true
         local pos=cc.p(marioPos.x,1)
         self.mario:dieForTrap()
+        cc.SimpleAudioEngine:getInstance():stopMusic()
+        cc.SimpleAudioEngine:getInstance():playEffect(music_diaoruxianjingsi)
         return
     end
     local topY=self.mapSize.height-self.marioSize.height-2
     if marioPos.y>=topY then
-        cclog("Mario in the Top")
+        --cclog("Mario in the Top")
         self.jumpOffset=0
         self.isSky=false
         local pos=cc.p(marioPos.x,topY)
@@ -240,6 +286,9 @@ function GameScene:collisionV()
         local upTileCoord=self.mainMap:pointToTileCoord(upCollisionPos)
         --cclog("upCollisionPos:%d,%d",upCollisionPos.x,upCollisionPos.y)
         --cclog("upTileCoord:%d,%d",upTileCoord.x,upTileCoord.y)
+        if self.mainMap:isMarioEatMushroom(upTileCoord) then
+            self.mario:changeForGotMushroom()
+        end
         local upPos=self.mainMap:tileCoordToPoint(upTileCoord)
         upPos=cc.p(marioPos.x,upPos.y-self.marioSize.height)
         --cclog("upPos:%d,%d",upPos.x,upPos.y)
@@ -248,6 +297,7 @@ function GameScene:collisionV()
         local flagUp=false
         if TileType.BRICK==tileType or TileType.LAND==tileType then
             if self.jumpOffset>0 then
+                self.mainMap:breakBrick(upTileCoord,self.mario.bodyType)
                 self.jumpOffset=0
                 self.curPos=upPos
                 self.mario:setPosition(upPos)
@@ -264,14 +314,20 @@ function GameScene:collisionV()
     for marioIdx=4,self.marioSize.width-5 do
         local downCollisionPos=cc.p(marioPos.x-self.marioSize.width/2+marioIdx,marioPos.y)
         local downTileCoord=self.mainMap:pointToTileCoord(downCollisionPos)
+        if self.mainMap:isMarioEatMushroom(downTileCoord) then
+            self.mario:changeForGotMushroom()
+        end
         downTileCoord.y=downTileCoord.y+1
+        if downTileCoord.y>=self.mainMap.mapSize.height then
+            return
+        end
         --cclog("downCollisionPos:%d,%d",downCollisionPos.x,downCollisionPos.y)
         local downPos=self.mainMap:tileCoordToPoint(downTileCoord)
         downPos=cc.p(marioPos.x,downPos.y+self.mainMap.tileSize.height)
-        cclog("downPos:%d,%d",downPos.x,downPos.y)
-        cclog("downTileCoord:%f,%f",downTileCoord.x,downTileCoord.y)
+        --cclog("downPos:%d,%d",downPos.x,downPos.y)
+        --cclog("downTileCoord:%f,%f",downTileCoord.x,downTileCoord.y)
         local tileType=self.mainMap:tileTypeAtCoord(downTileCoord)
-        cclog("down tileType:%d",tileType)
+        --cclog("down tileType:%d",tileType)
         local flagDown=false--判断是否落地
         if TileType.BRICK==tileType or TileType.LAND==tileType or TileType.PIPE==tileType then
             if self.jumpOffset<0 then
@@ -322,6 +378,10 @@ function GameScene:collisionH()
 end
 
 function GameScene:update(delta)
+    if self.mario.isDead then
+        self:stopForFail()
+        return
+    end
     self:updateControl()
     self.curPos=cc.p(self.mario:getPositionX(),self.mario:getPositionY())
     local offset=cc.p(self.moveOffset,self.jumpOffset)
@@ -339,6 +399,37 @@ function GameScene:update(delta)
     self:setSceneScrollPosition()
     self:collisionH()
     self:collisionV()
+end
+
+function GameScene:stopForFail()
+	if self.mario.lifeCnt==0 then
+	   cc.SimpleAudioEngine:getInstance():stopMusic()
+	   cc.SimpleAudioEngine:getInstance():playEffect(music_gameover)
+	   self.gameOver:setVisible(true)
+	else
+	   self.passFailure:setVisible(true)
+	end
+    cc.Director:getInstance():getScheduler():unscheduleScriptEntry(self.schedulerID)
+    local delay=cc.DelayTime:create(3)
+    local function onFail()
+    	self:reshowPassFailure()
+    end
+    self.mainLayer:runAction(cc.Sequence:create(delay,cc.CallFunc:create(onFail)))
+end
+
+function GameScene:reshowPassFailure()
+    if self.mario.lifeCnt==0 then
+        self:toMainMenu()
+    else
+        self.retry:setVisible(true)
+        self.retry:setEnabled(true)
+    end
+end
+
+function GameScene:toMainMenu()
+	local scene=require("MainMenu")
+	local menuScene=scene.create()
+	cc.Director:getInstance():replaceScene(menuScene)
 end
 
 return GameScene

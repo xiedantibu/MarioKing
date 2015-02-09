@@ -13,6 +13,7 @@ Mario.preState=nil
 Mario.face=nil
 Mario.isDead=nil
 Mario.isFlying=nil
+Mario.isSafeTime=nil
 --kinds of body sprites
 Mario.normalJumpLeft=nil
 Mario.normalLeft=nil
@@ -23,6 +24,8 @@ Mario.smallJumpLeft=nil
 Mario.smallLeft=nil
 Mario.smallJumpRight=nil
 Mario.smallRight=nil
+
+Mario.lifeCnt=3
 
 
 
@@ -47,9 +50,15 @@ end
 
 function Mario:initBodySprites()
 	self.normalJumpLeft=cc.Sprite:create(pic_mario_normal_left,cc.rect(18*10,0,18,32))
+	self.normalJumpLeft:retain()
 	self.normalLeft=cc.Sprite:create(pic_mario_normal_left,cc.rect(0,0,18,32))
+	self.normalLeft:retain()
 	self.normalJumpRight=cc.Sprite:create(pic_mario_normal_right,cc.rect(18*10,0,18,32))
+	self.normalJumpRight:retain()
 	self.normalRight=cc.Sprite:create(pic_mario_normal_right,cc.rect(0,0,18,32))
+	self.normalRight:retain()
+	self.normalDie=cc.SpriteFrame:create(pic_mario_normal_die ,cc.rect(24,0,24,34))
+	self.normalDie:retain()
 	
     self.smallJumpLeft=cc.SpriteFrame:create(pic_mario_small_left,cc.rect(14*10,0,14,16))
     self.smallJumpLeft:retain()
@@ -77,26 +86,113 @@ function Mario:setMarioState(_state)
     self.mainBody:stopAllActions()
     if MarioState.NORMAL_RIGHT==_state then
         self.face=MarioState.RIGHT
-        self.mainBody:setSpriteFrame(self.smallRight)
+        if self.bodyType==MarioBodyState.NORMAL then
+            self.mainBody:setSpriteFrame(self.normalRight) 
+        else
+            self.mainBody:setSpriteFrame(self.smallRight)
+        end
     elseif MarioState.NORMAL_LEFT==state then
         self.face=MarioState.LEFT
-        self.mainBody:setSpriteFrame(self.smallLeft)
+        if self.bodyType==MarioBodyState.NORMAL then
+            self.mainBody:setSpriteFrame(self.normalLeft)
+        else
+            self.mainBody:setSpriteFrame(self.smallLeft)
+        end
     elseif MarioState.RIGHT==_state then
         if not self.isFlying then
-            self.mainBody:runAction(cc.RepeatForever:create(cc.Animate:create(self:marioAnimSmallRight())))
+            if self.bodyType==MarioBodyState.NORMAL then
+                self.mainBody:runAction(cc.RepeatForever:create(cc.Animate:create(self:marioAnimNormalRight())))
+            else
+                self.mainBody:runAction(cc.RepeatForever:create(cc.Animate:create(self:marioAnimSmallRight())))
+            end
             self.face=MarioState.RIGHT
         end
    elseif MarioState.LEFT==_state then
         if not self.isFlying then
-            self.mainBody:runAction(cc.RepeatForever:create(cc.Animate:create(self:marioAnimSmallLeft())))
+            if self.bodyType==MarioBodyState.NORMAL then
+                self.mainBody:runAction(cc.RepeatForever:create(cc.Animate:create(self:marioAnimNormalLeft())))
+            else
+                self.mainBody:runAction(cc.RepeatForever:create(cc.Animate:create(self:marioAnimSmallLeft())))
+            end
             self.face=MarioState.LEFT
         end
     elseif MarioState.JUMP_LEFT==_state then
         self.face=MarioState.LEFT
-        self.mainBody:setSpriteFrame(self.smallJumpLeft)
+        if self.bodyType==MarioBodyState.NORMAL then
+            self.mainBody:setsetSpriteFrame(self.normalJumpLeft)
+        else
+            self.mainBody:setSpriteFrame(self.smallJumpLeft)
+        end
     elseif MarioState.JUMP_RIGHT==_state then
         self.face=MarioState.RIGHT
-        self.mainBody:setSpriteFrame(self.smallJumpRight)
+        if self.bodyType==MarioBodyState.NORMAL then
+            self.mainBody:setSpriteFrame(self.normalJumpRight)
+        else
+            self.mainBody:setSpriteFrame(self.smallJumpRight)
+        end
+    else
+    end
+end
+
+function Mario:setBodyType(_type)
+	self.bodyType=_type
+	if _type==MarioBodyState.NORMAL then
+	   self.curSize=self.normalSize
+	   self.mainBody:setSpriteFrame(self.normalRight)
+	elseif _type==MarioBodyState.SMALL then
+	   self.curSize=self.smallSize
+	   self.mainBody:setSpriteFrame(self.normalRight)
+	else
+	end
+    self:setContentSize(self.curSize)
+end
+
+function Mario:changeForGotMushroom()
+	if self.bodyType==MarioBodyState.SMALL then
+	   self:setBodyTypeForNormal()
+	   local blink=cc.Blink:create(1,5)
+	   self:runAction(blink)
+	elseif self.bodyType==MarioBodyState.NORMAL then
+	   
+	else
+	end
+end
+
+function Mario:changeForGotEnemy()
+    slef.isSafeTime=true
+    local delay=cc.DelayTime:create(3.0)
+    local function resetSafeTime()
+    	self.isSafeTime=false
+    end
+    self:runAction(cc.Sequence:create(delay,cc.CallFunc:create(resetSafeTime)))
+    if self.bodyType==MarioBodyState.NORMAL then
+        self:setBodyTypeForSmall()
+        local blink=cc.Blink:create(3,15)
+        self:runAction(blink)
+    elseif self.bodyType==MarioBodyState.SMALL then
+        self.mainBody:stopAllActions()
+        self.mainBody:setSpriteFrame(self.smallDie)
+        self.isDead=true
+    else
+    end
+end
+
+function Mario:setBodyTypeForNormal()
+	self.bodyType=MarioBodyState.NORMAL
+	if self.face==MarioState.LEFT then
+	   self.mainBody:setSpriteFrame(self.normalLeft)
+	elseif self.face==MarioState.RIGHT then
+	   self.mainBody:setSpriteFrame(self.normalRight)
+	else
+	end
+end
+
+function Mario:setBodyTypeForSmall()
+	self.bodyType=MarioBodyState.SMALL
+	if self.face==MarioState.LEFT then
+       self.mainBody:setSpriteFrame(self.smallLeft)
+    elseif self.face==MarioState.RIGHT then
+       self.mainBody:setSpriteFrame(self.smallRight)
     else
     end
 end
@@ -131,7 +227,7 @@ end
 
 function Mario:marioAnimSmallRight()
     local frames={}
-    for i=0,9 do
+    for i=0,10 do
         local frame=cc.SpriteFrame:create(pic_mario_small_right,cc.rect(14*i,0,14,16))
         frames[#frames+1]=frame
     end 
@@ -143,6 +239,36 @@ function Mario:marioAnimSmallDie()
     local frames={}
     for i=0,7 do
         local frame=cc.SpriteFrame:create(pic_mario_small_die,cc.rect(16*i,0,16,18))
+        frames[#frames+1]=frame
+    end 
+    local animation=cc.Animation:createWithSpriteFrames(frames,0.1)   
+    return animation
+end
+
+function Mario:marioAnimNormalLeft()
+    local frames={}
+    for i=9,0,-1 do
+        local frame=cc.SpriteFrame:create(pic_mario_normal_left,cc.rect(18*i,0,18,32))
+        frames[#frames+1]=frame
+    end 
+    local animation=cc.Animation:createWithSpriteFrames(frames,0.02)   
+    return animation
+end
+
+function Mario:marioAnimNormalRight()
+    local frames={}
+    for i=0,10 do
+        local frame=cc.SpriteFrame:create(pic_mario_normal_right,cc.rect(18*i,0,18,32))
+        frames[#frames+1]=frame
+    end 
+    local animation=cc.Animation:createWithSpriteFrames(frames,0.02)   
+    return animation
+end
+
+function Mario:marioAnimNormalDie()
+    local frames={}
+    for i=0,7 do
+        local frame=cc.SpriteFrame:create(pic_mario_normal_die,cc.rect(24*i,0,24,34))
         frames[#frames+1]=frame
     end 
     local animation=cc.Animation:createWithSpriteFrames(frames,0.1)   
